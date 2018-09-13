@@ -82,24 +82,28 @@ namespace CompanyASP.NET.Repository
         {
             using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
             {
+                string cmdText =
+                    @"SELECT Id,
+		                Name,
+		                Description,
+		                Supervisor,
+		                SuperDepartment,
+		                CompanyId,
+		                CreationTime
+                    FROM viDepartment
+                    WHERE Id = @Id
+                    ";
                 var param = new DynamicParameters();
-                param.Add("CompanyId", ids[0]);
-                param.Add("Id", ids[1]);
+                param.Add("Id", ids[0]);
+                if(ids.Length > 1)
+                {
+                    cmdText += " AND CompanyId = @CompanyId";
+                    param.Add("CompanyId", ids[1]);
+                }
                 try
                 {
                     con.Open();
-                    return con.QueryFirstOrDefault<Department>(
-                        @"SELECT Id,
-		                    Name,
-		                    Description,
-		                    Supervisor,
-		                    SuperDepartment,
-		                    CompanyId,
-		                    CreationTime
-                        FROM viDepartment
-                        WHERE Id = @Id
-                        AND CompanyId = @CompanyId
-                    ", param);
+                    return con.QueryFirstOrDefault<Department>(cmdText, param);
                 }
                 finally
                 {

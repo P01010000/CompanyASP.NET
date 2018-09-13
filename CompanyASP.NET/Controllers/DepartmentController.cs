@@ -22,26 +22,18 @@ namespace CompanyASP.NET.Controllers
 
         // GET api/employee
         [HttpGet]
-        public IActionResult Get()
+        public IActionResult Get([FromQuery] int? cid)
         {
-            var result = Repository.RetrieveAll();
+            var result = cid.HasValue ? Repository.RetrieveAll(cid.Value) : Repository.RetrieveAll();
             return result.Count() > 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
         // GET api/employee/5
-        [HttpGet("{cid}")]
-        public IActionResult Get(int cid)
+        [HttpGet("{did}")]
+        public IActionResult Get(int did, [FromQuery] int? cid)
         {
-            var result = Repository.RetrieveAll(cid);
-            return result.Count() > 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
-        }
-
-        // GET api/employee/5
-        [HttpGet("{cid}/{did}")]
-        public IActionResult Get(int cid, int did)
-        {
-            var result = Repository.Retrieve(cid, did);
-             return result != null ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
+            var result = cid.HasValue ? Repository.Retrieve(did, cid.Value) : Repository.Retrieve(did);
+            return result != null ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
         // POST api/employee
