@@ -1,59 +1,81 @@
-﻿using System;
+﻿using CompanyASP.NET.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace CompanyASP.NET.Repository
 {
-    public class CachingRepository<T> : IRepository<T> where T : class
+    public class CachingRepository<T> : IRepository<T> where T : IModel
     {
         private IRepository<T> Repository;
-        private int Timeout;
-        public CachingRepository(IRepository<T> repository, int timeout)
+        private TimeSpan CacheDuration;
+        private IEnumerable<T> CachedObjects;
+        private DateTime DataDateTime;
+        
+        public CachingRepository(IRepository<T> repository, int cacheDuration = 30)
         {
             Repository = repository;
-            Timeout = timeout;
+            CacheDuration = TimeSpan.FromSeconds(cacheDuration);
+            DataDateTime = new DateTime();
         }
+
+        private bool IsCacheValid { get { return CachedObjects != null && (DateTimeOffset.Now - DataDateTime) < CacheDuration; } }
 
         private void ValidateCache()
         {
-
+            if(!IsCacheValid)
+            {
+                try
+                {
+                    CachedObjects = Repository.RetrieveAll();
+                    DataDateTime = DateTime.Now;
+                } catch (Exception)
+                {
+                    CachedObjects = new List<T>();
+                }
+            }
         }
 
         private void InvalidateCache()
         {
-
+            CachedObjects = null;
         }
 
 
         public int Create(T obj)
         {
-            throw new NotImplementedException();
+            InvalidateCache();
+            return Repository.Create(obj);
         }
 
         public bool Delete(params int[] ids)
         {
-            throw new NotImplementedException();
+            InvalidateCache();
+            return Repository.Delete(ids);
         }
 
         public T Retrieve(params int[] ids)
         {
-            throw new NotImplementedException();
+            ValidateCache();
+            return CachedObjects.FirstOrDefault(info => info.Identity(ids));
         }
 
         public IEnumerable<T> RetrieveAll(params int[] ids)
         {
-            throw new NotImplementedException();
+            ValidateCache();
+            return CachedObjects;
         }
 
         public bool Update(T obj)
         {
-            throw new NotImplementedException();
+            InvalidateCache();
+            return Repository.Update(obj);
         }
 
         public int UpdateAll(IEnumerable<T> list)
         {
-            throw new NotImplementedException();
+            InvalidateCache();
+            return Repository.UpdateAll(list);
         }
     }
 }

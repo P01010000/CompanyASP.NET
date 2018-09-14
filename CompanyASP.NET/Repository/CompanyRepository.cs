@@ -4,37 +4,48 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using CompanyASP.NET.Helper;
+using Microsoft.EntityFrameworkCore;
 
 namespace CompanyASP.NET.Repository
 {
     public class CompanyRepository : IRepository<Company>
     {
-        private static CompanyRepository instance = new CompanyRepository();
-
-        public static CompanyRepository getInstance() { return instance; }
+        private IDbContext DbContext;
+        public CompanyRepository(IDbContext dbContext)
+        {
+            DbContext = dbContext;
+        }
 
         public int Create(Company obj)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            if (obj.Name == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Name is missing");
+            if (obj.Description == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Description is missing");
+            if (obj.FoundedAt == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "FoundedAt is missing");
+            if (obj.Branch == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Branch is missing");
+
+            using (IDbConnection con = DbContext.Connection)
             {
+                var param = new DynamicParameters();
+                param.Add("cid", null);
+                param.Add("name", obj.Name);
+                param.Add("description", obj.Description);
+                param.Add("foundedAt", obj.FoundedAt);
+                param.Add("branch", obj.Branch);
+                param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
+
                 try
                 {
-                    con.Open();
-                    var param = new DynamicParameters();
-                    param.Add("cid", null);
-                    param.Add("name", obj.Name);
-                    param.Add("description", obj.Description);
-                    param.Add("foundedAt", obj.FoundedAt);
-                    param.Add("branch", obj.Branch);
-                    param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
-
                     con.Execute("spInsertOrUpdateCompany", param, commandType: CommandType.StoredProcedure);
 
-                    return param.Get<Int32>("returnValue");
+                    int returnValue = param.Get<Int32>("returnValue");
+
+                    if (returnValue <= 0) throw new RepositoryException<CreateResultType>(CreateResultType.NOT_INSERTED);
+                    return returnValue;
                 }
                 catch (SqlException ex)
                 {
-                    return -1;
+                    throw new RepositoryException<CreateResultType>(CreateResultType.SQL_EXCEPTION, ex.Message);
                 }
                 finally
                 {
@@ -49,14 +60,13 @@ namespace CompanyASP.NET.Repository
 
         public bool Delete(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
                     return con.Execute("UPDATE Person SET DeletedTime=getDate() WHERE CompanyId = @id", param) > 0;
                 }
                 catch
@@ -79,14 +89,13 @@ namespace CompanyASP.NET.Repository
 
         public Company Retrieve(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
                     return con.QueryFirstOrDefault<Company>(
                         @"SELECT [Id]
                           ,[PersonId]
@@ -114,12 +123,10 @@ namespace CompanyASP.NET.Repository
 
         public IEnumerable<Company> RetrieveAll(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 try
                 {
-                    con.Open();
-
                     return con.Query<Company>(
                         @"SELECT [Id]
                           ,[PersonId]
@@ -147,7 +154,7 @@ namespace CompanyASP.NET.Repository
         public bool Update(Company obj)
         {
 
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("cid", obj.Id);
@@ -158,8 +165,6 @@ namespace CompanyASP.NET.Repository
 
                 try
                 {
-                    con.Open();
-
                     return con.Execute("spInsertOrUpdateCompany", param, commandType: CommandType.StoredProcedure) > 0;
                 }
                 catch

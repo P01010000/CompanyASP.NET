@@ -1,11 +1,9 @@
-﻿using System;
+﻿using CompanyASP.NET.Models;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace CompanyASP.NET.Repository
 {
-    public interface IRepository<T> where T : class
+    public interface IRepository<T> where T : IModel
     {
         int Create(T obj);
         T Retrieve(params int[] ids);

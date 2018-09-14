@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CompanyASP.NET.Helper;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CompanyASP.NET.Controllers
 {
@@ -39,7 +41,27 @@ namespace CompanyASP.NET.Controllers
         [HttpPost]
         public IActionResult Post([FromBody] Company value)
         {
-            int id = Repository.Create(value);
+            int id = 0;
+            try
+            {
+                id = Repository.Create(value);
+            } catch(RepositoryException<CreateResultType> ex)
+            {
+                switch (ex.Type)
+                {
+                    // Log this here?
+                    case CreateResultType.OK:
+                        return Ok();
+                    case CreateResultType.INVALID_ARGUMENT:
+                        return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
+                    case CreateResultType.NOT_FOUND:
+                        return StatusCode(StatusCodes.Status204NoContent, ex.Message);
+                    case CreateResultType.SQL_EXCEPTION:
+                        return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
+                    case CreateResultType.NOT_INSERTED:
+                        return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
+                }
+            }
             return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 

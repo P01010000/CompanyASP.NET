@@ -47,8 +47,17 @@ namespace CompanyASP.NET.Controllers
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Address value)
         {
+            value.Id = id;
             bool success = Repository.Update(value);
             return success ? Ok() : (IActionResult)BadRequest("Could not be updated");
+        }
+
+        // PATCH api/employee
+        [HttpPatch]
+        public IActionResult Patch([FromBody] IEnumerable<Address> addresses)
+        {
+            var result = Repository.UpdateAll(addresses);
+            return result > 0 ? Ok(result) : (IActionResult)BadRequest("Could not be updated");
         }
 
         // DELETE api/employee/5

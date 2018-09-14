@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace CompanyASP.NET.Models
 {
-    public class Employee
+    public class Employee : IModel
     {
         public int? Id { get; set; }
         public int? PersonId { get; set; }
@@ -15,5 +15,9 @@ namespace CompanyASP.NET.Models
         public string Phone { get; set; }
         public string Gender { get; set; }
         public DateTime? EmployeeSince { get; set; }
+        public bool Identity(int[] ids)
+        {
+            return Id == ids[0];
+        }
     }
 }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace CompanyASP.NET.Models
 {
-    public class Department
+    public class Department : IModel
     {
         public int? Id { get; set; }
         public string Name { get; set; }
@@ -13,5 +13,9 @@ namespace CompanyASP.NET.Models
         public int? Supervisor { get; set; }
         public int? SuperDepartment { get; set; }
         public int? CompanyId { get; set; }
+        public bool Identity(int[] ids)
+        {
+            return Id == ids[0];
+        }
     }
 }
