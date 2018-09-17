@@ -43,6 +43,15 @@ namespace CompanyASP.NET.Controllers
             return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 
+        // POST api/address
+        [HttpPost("collection")]
+        public IActionResult Post([FromBody] IEnumerable<Address> list)
+        {
+            List<int> result;
+            result = Repository.Create(list).ToList();
+            return result.Count > 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status422UnprocessableEntity);
+        }
+
         // PUT api/address/5
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Address value)

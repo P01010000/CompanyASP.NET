@@ -49,6 +49,50 @@ namespace CompanyASP.NET.Repository
             }
         }
 
+        public IEnumerable<int> Create(IEnumerable<Company> list)
+        {
+            List<int> result = new List<int>();
+
+            DataTable dataTable = new DataTable();
+            dataTable.Columns.Add("Name", typeof(string));
+            dataTable.Columns.Add("Description", typeof(string));
+            dataTable.Columns.Add("FoundedAt", typeof(DateTime));
+            dataTable.Columns.Add("Branch", typeof(string));
+
+            foreach (Company obj in list)
+            {
+                dataTable.Rows.Add(
+                    obj.Name,
+                    obj.Description,
+                    obj.FoundedAt,
+                    obj.Branch
+                );
+            }
+
+            using (IDbConnection con = DbContext.Connection)
+            {
+                var cmd = con.CreateCommand();
+                cmd.CommandText = "spInsertMultipleCompanies";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new SqlParameter { ParameterName = "Companies", Value = dataTable, SqlDbType = SqlDbType.Structured });
+                try
+                {
+                    IDataReader rdr = cmd.ExecuteReader();
+
+                    while (rdr.Read())
+                    {
+                        result.Add(rdr.GetInt32(0));
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
+                }
+            }
+
+            return result;
+        }
+
         public bool Delete(params int[] ids)
         {
             using (IDbConnection con = DbContext.Connection)

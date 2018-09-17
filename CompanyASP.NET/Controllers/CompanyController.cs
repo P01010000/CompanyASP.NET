@@ -65,6 +65,15 @@ namespace CompanyASP.NET.Controllers
             }
         }
 
+        // POST api/company
+        [HttpPost("collection")]
+        public IActionResult Post([FromBody] IEnumerable<Company> list)
+        {
+            List<int> result;
+            result = Repository.Create(list).ToList();
+            return result.Count > 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status422UnprocessableEntity);
+        }
+
         // PUT api/company/5
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Company value)

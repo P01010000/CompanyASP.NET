@@ -5,14 +5,13 @@ using System.Data.SqlClient;
 using System.Text.RegularExpressions;
 using CompanyASP.NET.Models;
 using Dapper;
-using System.Reflection;
 using CompanyASP.NET.Helper;
 
 namespace CompanyASP.NET.Repository
 {
     public class EmployeeRepository : IRepository<Employee>
     {
-        private IDbContext DbContext;
+        private readonly IDbContext DbContext;
 
         public EmployeeRepository(IDbContext dbContext)
         {
@@ -27,7 +26,7 @@ namespace CompanyASP.NET.Repository
             if (obj.Birthday == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Birthday is missing");
             if (obj.Phone == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Phone is missing");
             if (obj.Gender == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Gender is missing");
-            if (new Regex("[0-9]+").IsMatch(obj.Gender)) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Gender has to be '1' for male, '2' for female any digit for 'other'");
+            if (!new Regex("[0-9]+").IsMatch(obj.Gender)) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Gender has to be '1' for male, '2' for female any digit for 'other'");
             if (obj.EmployeeSince == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "EmployeeSince is missing");
 
             using (IDbConnection con = DbContext.Connection)
@@ -62,6 +61,55 @@ namespace CompanyASP.NET.Repository
                     throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+        }
+
+        public IEnumerable<int> Create(IEnumerable<Employee> list)
+        {
+            List<int> result = new List<int>();
+
+            DataTable dataTable = new DataTable();
+            dataTable.Columns.Add("LastName", typeof(string));
+            dataTable.Columns.Add("FirstName", typeof(string));
+            dataTable.Columns.Add("Birthday", typeof(DateTime));
+            dataTable.Columns.Add("Phone", typeof(string));
+            dataTable.Columns.Add("Gender", typeof(int));
+            dataTable.Columns.Add("EmployeeSince", typeof(DateTime));
+
+            foreach(Employee obj in list)
+            {
+                int gender;
+                Int32.TryParse(obj.Gender, out gender);
+                dataTable.Rows.Add(
+                    obj.LastName,
+                    obj.FirstName,
+                    obj.Birthday,
+                    obj.Phone,
+                    gender,
+                    obj.EmployeeSince
+                );
+            }
+
+            using (IDbConnection con = DbContext.Connection)
+            {
+                var cmd = con.CreateCommand();
+                cmd.CommandText = "spInsertMultipleEmployee";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new SqlParameter { ParameterName = "Employees", Value = dataTable, SqlDbType = SqlDbType.Structured });
+                try
+                {
+                    IDataReader rdr = cmd.ExecuteReader();
+
+                    while(rdr.Read())
+                    {
+                        result.Add(rdr.GetInt32(0));
+                    }
+                }  catch (SqlException ex)
+                {
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
+                }
+            }
+
+            return result;
         }
 
         public bool Delete(params int[] ids)

@@ -50,6 +50,52 @@ namespace CompanyASP.NET.Repository
             }
         }
 
+        public IEnumerable<int> Create(IEnumerable<Department> list)
+        {
+            List<int> result = new List<int>();
+
+            DataTable dataTable = new DataTable();
+            dataTable.Columns.Add("Name", typeof(string));
+            dataTable.Columns.Add("Description", typeof(string));
+            dataTable.Columns.Add("Supervisor", typeof(int));
+            dataTable.Columns.Add("SuperDepartment", typeof(int));
+            dataTable.Columns.Add("CompanyId", typeof(int));
+
+            foreach (Department obj in list)
+            {
+                dataTable.Rows.Add(
+                    obj.Name,
+                    obj.Description,
+                    obj.Supervisor,
+                    obj.SuperDepartment,
+                    obj.CompanyId
+                );
+            }
+
+            using (IDbConnection con = DbContext.Connection)
+            {
+                var cmd = con.CreateCommand();
+                cmd.CommandText = "spInsertMultipleDepartments";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new SqlParameter { ParameterName = "Departments", Value = dataTable, SqlDbType = SqlDbType.Structured });
+                try
+                {
+                    IDataReader rdr = cmd.ExecuteReader();
+
+                    while (rdr.Read())
+                    {
+                        result.Add(rdr.GetInt32(0));
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
+                }
+            }
+
+            return result;
+        }
+
         public bool Delete(params int[] ids)
         {
             using (IDbConnection con = DbContext.Connection)

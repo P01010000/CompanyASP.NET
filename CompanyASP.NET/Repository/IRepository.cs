@@ -6,6 +6,7 @@ namespace CompanyASP.NET.Repository
     public interface IRepository<T> where T : IModel
     {
         int Create(T obj);
+        IEnumerable<int> Create(IEnumerable<T> list);
         T Retrieve(params int[] ids);
         IEnumerable<T> RetrieveAll(params int[] ids);
         bool Update(T obj);

@@ -52,6 +52,12 @@ namespace CompanyASP.NET.Repository
             return Repository.Create(obj);
         }
 
+        public IEnumerable<int> Create(IEnumerable<T> list)
+        {
+            InvalidateCache();
+            return Repository.Create(list);
+        }
+
         public bool Delete(params int[] ids)
         {
             InvalidateCache();
