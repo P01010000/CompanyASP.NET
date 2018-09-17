@@ -23,18 +23,18 @@ namespace CompanyASP.NET.Repository
             if (obj.Name == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Name is missing");
             if (obj.FoundedAt == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "FoundedAt is missing");
 
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                var param = new DynamicParameters();
-                param.Add("cid", null);
-                param.Add("name", obj.Name);
-                param.Add("description", obj.Description);
-                param.Add("foundedAt", obj.FoundedAt);
-                param.Add("branch", obj.Branch);
-                param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
-
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
+                    var param = new DynamicParameters();
+                    param.Add("cid", null);
+                    param.Add("name", obj.Name);
+                    param.Add("description", obj.Description);
+                    param.Add("foundedAt", obj.FoundedAt);
+                    param.Add("branch", obj.Branch);
+                    param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
+
                     con.Execute("spInsertOrUpdateCompany", param, commandType: CommandType.StoredProcedure);
 
                     int returnValue = param.Get<Int32>("returnValue");
@@ -42,10 +42,9 @@ namespace CompanyASP.NET.Repository
                     if (returnValue <= 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_INSERTED);
                     return returnValue;
                 }
-                catch (SqlException ex)
-                {
-                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message);
-                }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message);
             }
         }
 
@@ -69,14 +68,15 @@ namespace CompanyASP.NET.Repository
                 );
             }
 
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                var cmd = con.CreateCommand();
-                cmd.CommandText = "spInsertMultipleCompanies";
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add(new SqlParameter { ParameterName = "Companies", Value = dataTable, SqlDbType = SqlDbType.Structured });
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
+                    var cmd = con.CreateCommand();
+                    cmd.CommandText = "spInsertMultipleCompanies";
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new SqlParameter { ParameterName = "Companies", Value = dataTable, SqlDbType = SqlDbType.Structured });
+                    
                     IDataReader rdr = cmd.ExecuteReader();
 
                     while (rdr.Read())
@@ -84,10 +84,9 @@ namespace CompanyASP.NET.Repository
                         result.Add(rdr.GetInt32(0));
                     }
                 }
-                catch (SqlException ex)
-                {
-                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
-                }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
             }
 
             return result;
@@ -95,47 +94,47 @@ namespace CompanyASP.NET.Repository
 
         public bool Delete(params int[] ids)
         {
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                var param = new DynamicParameters();
-                param.Add("Id", ids[0]);
-
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
+                    var param = new DynamicParameters();
+                    param.Add("Id", ids[0]);
+
                     return con.Execute("UPDATE Person SET DeletedTime=getDate() WHERE CompanyId = @id", param) > 0;
                 }
-                catch
-                {
-                    return false;
-                }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
             }
         }
 
         public Company Retrieve(params int[] ids)
         {
             Company result = null;
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                var param = new DynamicParameters();
-                param.Add("Id", ids[0]);
-
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
+                    var param = new DynamicParameters();
+                    param.Add("Id", ids[0]);
+
                     result = con.QueryFirstOrDefault<Company>(
                         @"SELECT [Id]
-                          ,[PersonId]
-                          ,[Name]
-                          ,[Description]
-                          ,[FoundedAt]
-                          ,[Branch]
+                            ,[PersonId]
+                            ,[Name]
+                            ,[Description]
+                            ,[FoundedAt]
+                            ,[Branch]
                         FROM dbo.viCompany
                         WHERE Id = @Id
                     ", param);
-                } catch (SqlException ex)
-                {
-                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
             }
+
             if (result == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
             return result;
         }
@@ -143,9 +142,9 @@ namespace CompanyASP.NET.Repository
         public IEnumerable<Company> RetrieveAll(params int[] ids)
         {
             List<Company> result;
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
                     result = con.Query<Company>(
                         @"SELECT [Id]
@@ -156,35 +155,34 @@ namespace CompanyASP.NET.Repository
                           ,[Branch]
                         FROM viCompany"
                     ).AsList();
-                } catch (SqlException ex)
-                {
-                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
             }
+
             if (result.Count == 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
             return result;
         }
 
         public bool Update(Company obj)
         {
-
-            using (IDbConnection con = DbContext.Connection)
+            try
             {
-                var param = new DynamicParameters();
-                param.Add("cid", obj.Id);
-                param.Add("name", obj.Name);
-                param.Add("description", obj.Description);
-                param.Add("foundedAt", obj.FoundedAt);
-                param.Add("branch", obj.Branch);
-
-                try
+                using (IDbConnection con = DbContext.Connection)
                 {
+                    var param = new DynamicParameters();
+                    param.Add("cid", obj.Id);
+                    param.Add("name", obj.Name);
+                    param.Add("description", obj.Description);
+                    param.Add("foundedAt", obj.FoundedAt);
+                    param.Add("branch", obj.Branch);
+
                     return con.Execute("spInsertOrUpdateCompany", param, commandType: CommandType.StoredProcedure) > 0;
                 }
-                catch
-                {
-                    return false;
-                }
+            } catch (SqlException ex)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
             }
         }
 

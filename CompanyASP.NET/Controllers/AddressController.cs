@@ -43,7 +43,7 @@ namespace CompanyASP.NET.Controllers
             return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 
-        // POST api/address
+        // POST api/address/collection
         [HttpPost("collection")]
         public IActionResult Post([FromBody] IEnumerable<Address> list)
         {
