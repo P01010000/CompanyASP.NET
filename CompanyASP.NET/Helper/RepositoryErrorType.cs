@@ -5,9 +5,8 @@ using System.Threading.Tasks;
 
 namespace CompanyASP.NET.Helper
 {
-    public enum CreateResultType
+    public enum RepositoryErrorType
     {
-        OK,
         INVALID_ARGUMENT,
         NOT_FOUND,
         SQL_EXCEPTION,

@@ -47,6 +47,7 @@ namespace CompanyASP.NET.Controllers
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Employee value)
         {
+            value.Id = id;
             bool success = Repository.Update(value);
             return success ? Ok() : (IActionResult)BadRequest("Could not be updated");
         }

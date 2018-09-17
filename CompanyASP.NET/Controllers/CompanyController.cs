@@ -21,7 +21,7 @@ namespace CompanyASP.NET.Controllers
             Repository = repository;
         }
 
-        // GET api/employee
+        // GET api/company
         [HttpGet]
         public IActionResult Get()
         {
@@ -29,7 +29,7 @@ namespace CompanyASP.NET.Controllers
             return result.Count() != 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
-        // GET api/employee/5
+        // GET api/company/5
         [HttpGet("{id}")]
         public IActionResult Get(int id)
         {
@@ -37,7 +37,7 @@ namespace CompanyASP.NET.Controllers
             return result != null ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
-        // POST api/employee
+        // POST api/company
         [HttpPost]
         public IActionResult Post([FromBody] Company value)
         {
@@ -45,35 +45,36 @@ namespace CompanyASP.NET.Controllers
             try
             {
                 id = Repository.Create(value);
-            } catch(RepositoryException<CreateResultType> ex)
+                return Ok(id);
+            } catch(RepositoryException<RepositoryErrorType> ex)
             {
                 switch (ex.Type)
                 {
                     // Log this here?
-                    case CreateResultType.OK:
-                        return Ok();
-                    case CreateResultType.INVALID_ARGUMENT:
+                    case RepositoryErrorType.INVALID_ARGUMENT:
                         return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
-                    case CreateResultType.NOT_FOUND:
+                    case RepositoryErrorType.NOT_FOUND:
                         return StatusCode(StatusCodes.Status204NoContent, ex.Message);
-                    case CreateResultType.SQL_EXCEPTION:
+                    case RepositoryErrorType.SQL_EXCEPTION:
                         return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
-                    case CreateResultType.NOT_INSERTED:
-                        return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
+                    case RepositoryErrorType.NOT_INSERTED:
+                        return StatusCode(StatusCodes.Status409Conflict, ex.Message);
+                    default:
+                        return BadRequest(ex.Message);
                 }
             }
-            return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 
-        // PUT api/employee/5
+        // PUT api/company/5
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Company value)
         {
+            value.Id = id;
             bool success = Repository.Update(value);
             return success ? Ok() : (IActionResult)BadRequest("Could not be updated");
         }
 
-        // DELETE api/employee/5
+        // DELETE api/company/5
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {

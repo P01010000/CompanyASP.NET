@@ -20,7 +20,7 @@ namespace CompanyASP.NET.Controllers
             Repository = repository;
         }
 
-        // GET api/employee
+        // GET api/department
         [HttpGet]
         public IActionResult Get([FromQuery] int? cid)
         {
@@ -28,7 +28,7 @@ namespace CompanyASP.NET.Controllers
             return result.Count() > 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
-        // GET api/employee/5
+        // GET api/department/5
         [HttpGet("{did}")]
         public IActionResult Get(int did, [FromQuery] int? cid)
         {
@@ -36,7 +36,7 @@ namespace CompanyASP.NET.Controllers
             return result != null ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
-        // POST api/employee
+        // POST api/department
         [HttpPost]
         public IActionResult Post([FromBody] Department value)
         {
@@ -44,15 +44,16 @@ namespace CompanyASP.NET.Controllers
             return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 
-        // PUT api/employee/5
+        // PUT api/department/5
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Department value)
         {
+            value.Id = id;
             bool success = Repository.Update(value);
             return success ? Ok() : (IActionResult)BadRequest("Could not be updated");
         }
 
-        // DELETE api/employee/5
+        // DELETE api/department/5
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {

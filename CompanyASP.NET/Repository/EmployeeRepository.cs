@@ -6,93 +6,93 @@ using System.Text.RegularExpressions;
 using CompanyASP.NET.Models;
 using Dapper;
 using System.Reflection;
+using CompanyASP.NET.Helper;
 
 namespace CompanyASP.NET.Repository
 {
     public class EmployeeRepository : IRepository<Employee>
     {
-        private static EmployeeRepository instance = new EmployeeRepository();
+        private IDbContext DbContext;
 
-        public static EmployeeRepository getInstance() { return instance; }
+        public EmployeeRepository(IDbContext dbContext)
+        {
+            DbContext = dbContext;
+        }
 
         public int Create(Employee obj)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            // Check required fields and validate if necessary
+            if (obj.LastName == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "LastName is missing");
+            if (obj.FirstName == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "FirstName is missing");
+            if (obj.Birthday == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Birthday is missing");
+            if (obj.Phone == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Phone is missing");
+            if (obj.Gender == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Gender is missing");
+            if (new Regex("[0-9]+").IsMatch(obj.Gender)) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Gender has to be '1' for male, '2' for female any digit for 'other'");
+            if (obj.EmployeeSince == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "EmployeeSince is missing");
+
+            using (IDbConnection con = DbContext.Connection)
             {
+                var param = new DynamicParameters();
+                param.Add("id", null);
+                param.Add("personId", null);
+                param.Add("lastName", obj.LastName);
+                param.Add("firstName", obj.FirstName);
+                param.Add("birthday", obj.Birthday);
+                param.Add("phone", obj.Phone);
                 try
                 {
-                    con.Open();
-                    var param = new DynamicParameters();
-                    param.Add("id", null);
-                    param.Add("personId", null);
-                    param.Add("lastName", obj.LastName);
-                    param.Add("firstName", obj.FirstName);
-                    param.Add("birthday", obj.Birthday);
-                    param.Add("phone", obj.Phone);
-                    if(obj.Gender != null && new Regex("[0-9]+").IsMatch(obj.Gender)) param.Add("gender", Convert.ToInt32(obj.Gender));
-                    param.Add("employeeSince", obj.EmployeeSince);
-                    param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
+                    param.Add("gender", Convert.ToInt32(obj.Gender));
+                } catch (Exception)
+                {
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, $"Gender '{obj.Gender}' can't be converted to integer");
+                }
+                param.Add("employeeSince", obj.EmployeeSince);
+                param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
 
+                try
+                {
                     con.Execute("spInsertOrUpdateEmployee", param, commandType: CommandType.StoredProcedure);
 
-                    return param.Get<Int32>("returnValue");
+                    int returnValue = param.Get<Int32>("returnValue");
+                    if (returnValue <= 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_INSERTED);
+                    return returnValue;
                 }
                 catch (SqlException ex)
                 {
-                    return -1;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException) { }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public bool Delete(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
                     return con.Execute("UPDATE Person SET DeletedTime=getDate() WHERE EmployeeId = @id", param) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public Employee Retrieve(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            Employee result = null;
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
-                    return con.QueryFirstOrDefault<Employee>(
+                    result = con.QueryFirstOrDefault<Employee>(
                         @"SELECT Id,
                             PersonId,
                             LastName,
@@ -104,30 +104,23 @@ namespace CompanyASP.NET.Repository
                         FROM dbo.viEmployee
                         WHERE Id = @Id
                     ", param);
-                }
-                finally
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public IEnumerable<Employee> RetrieveAll(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            List<Employee> result;
+            using (IDbConnection con = DbContext.Connection)
             {
                 try
                 {
-                    con.Open();
-
-                    return con.Query<Employee>(
+                    result = con.Query<Employee>(
                         @"SELECT Id,
                             PersonId,
                             LastName,
@@ -137,26 +130,28 @@ namespace CompanyASP.NET.Repository
                             Gender,
                             EmployeeSince
                         FROM viEmployee"
-                    );
-                }
-                finally
+                    ).AsList();
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result.Count == 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public bool Update(Employee obj)
         {
+            int? gender = null;
+            try
+            {
+                if (obj.Gender != null) gender = Convert.ToInt32(obj.Gender);
+            } catch (Exception)
+            {
+                throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, $"Gender '{obj.Gender}' can't be converted to integer");
+            }
 
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("eid", obj.Id);
@@ -164,29 +159,16 @@ namespace CompanyASP.NET.Repository
                 param.Add("firstName", obj.FirstName);
                 param.Add("birthday", obj.Birthday);
                 param.Add("phone", obj.Birthday);
-                if (obj.Gender != null && new Regex("[0-9]+").IsMatch(obj.Gender)) param.Add("gender", Convert.ToInt32(obj.Gender));
+                param.Add("gender", gender);
                 param.Add("employeeSince", obj.EmployeeSince);
 
                 try
                 {
-                    con.Open();
-
                     return con.Execute("spInsertOrUpdateEmployee", param, commandType: CommandType.StoredProcedure) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }

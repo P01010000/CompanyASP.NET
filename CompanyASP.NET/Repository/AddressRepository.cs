@@ -1,4 +1,5 @@
-﻿using CompanyASP.NET.Models;
+﻿using CompanyASP.NET.Helper;
+using CompanyASP.NET.Models;
 using Dapper;
 using System;
 using System.Collections.Generic;
@@ -9,90 +10,80 @@ namespace CompanyASP.NET.Repository
 {
     public class AddressRepository : IRepository<Address>
     {
-        private static AddressRepository instance = new AddressRepository();
+        private IDbContext DbContext;
 
-        public static AddressRepository getInstance() { return instance; }
+        public AddressRepository(IDbContext dbContext)
+        {
+            DbContext = dbContext;
+        }
 
         public int Create(Address obj)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            // Check required fields
+            if (obj.Street == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Street is missing");
+            if (obj.Zip == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Zip is missing");
+            if (obj.Place == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Place is missing");
+            if (obj.Country == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Country is missing");
+
+            using (IDbConnection con = DbContext.Connection)
             {
+                var param = new DynamicParameters();
+                /*foreach(PropertyInfo p in obj.GetType().GetProperties())
+                {
+                    param.Add(p.Name, p.GetValue(obj));
+                }*/
+                param.Add("addressId", null);
+                param.Add("personId", null);
+                param.Add("street", obj.Street);
+                param.Add("zip", obj.Zip);
+                param.Add("place", obj.Place);
+                param.Add("countryCode", obj.Country);
+                param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
+
                 try
                 {
-                    con.Open();
-                    var param = new DynamicParameters();
-                    /*foreach(PropertyInfo p in obj.GetType().GetProperties())
-                    {
-                        param.Add(p.Name, p.GetValue(obj));
-                    }*/
-                    param.Add("addressId", null);
-                    param.Add("personId", null);
-                    param.Add("street", obj.Street);
-                    param.Add("zip", obj.Zip);
-                    param.Add("place", obj.Place);
-                    param.Add("countryCode", obj.Country);
-                    param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
-
                     con.Execute("spInsertOrUpdateAddress", param, commandType: CommandType.StoredProcedure);
 
-                    return param.Get<Int32>("returnValue");
+                    int returnValue = param.Get<Int32>("returnValue");
+                    if (returnValue <= 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_INSERTED);
+                    return returnValue;
                 }
                 catch (SqlException ex)
                 {
-                    return -1;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException) { }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public bool Delete(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
                     return con.Execute("UPDATE Address SET DeletedTime=getDate() WHERE Id = @id", param) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public Address Retrieve(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            Address result = null;
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
-                    return con.QueryFirstOrDefault<Address>(
+                    result = con.QueryFirstOrDefault<Address>(
                         @"SELECT [Id]
                           ,[Street]
                           ,[Zip]
@@ -101,56 +92,43 @@ namespace CompanyASP.NET.Repository
                         FROM dbo.viAddress
                         WHERE Id = @Id
                     ", param);
-                }
-                finally
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public IEnumerable<Address> RetrieveAll(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            List<Address> result;
+            using (IDbConnection con = DbContext.Connection)
             {
                 try
                 {
-                    con.Open();
-
-                    return con.Query<Address>(
+                    result = con.Query<Address>(
                         @"SELECT [Id]
                           ,[Street]
                           ,[Zip]
                           ,[Place]
                           ,[Country]
                         FROM viAddress"
-                    );
-                }
-                finally
+                    ).AsList();
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result.Count == 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public bool Update(Address obj)
         {
 
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("addressId", obj.Id);
@@ -162,24 +140,11 @@ namespace CompanyASP.NET.Repository
 
                 try
                 {
-                    con.Open();
-
                     return con.Execute("spInsertOrUpdateAddress", param, commandType: CommandType.StoredProcedure) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }

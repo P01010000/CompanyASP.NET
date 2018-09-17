@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using CompanyASP.NET.Models;
+using Microsoft.Extensions.Options;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -8,9 +9,9 @@ namespace CompanyASP.NET.Helper
     {
         private string connectionString;
 
-        public SqlContext(IConfiguration configuration)
+        public SqlContext(IOptions<DbSettings> options)
         {
-            connectionString = configuration["ConnectionString"];
+            connectionString = options.Value.DefaultConnection;
         }
 
         public IDbConnection Connection {

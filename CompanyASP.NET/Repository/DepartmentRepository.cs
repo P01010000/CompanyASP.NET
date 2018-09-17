@@ -1,4 +1,5 @@
-﻿using CompanyASP.NET.Models;
+﻿using CompanyASP.NET.Helper;
+using CompanyASP.NET.Models;
 using Dapper;
 using System;
 using System.Collections.Generic;
@@ -9,78 +10,68 @@ namespace CompanyASP.NET.Repository
 {
     public class DepartmentRepository : IRepository<Department>
     {
-        private static DepartmentRepository instance = new DepartmentRepository();
+        private IDbContext DbContext;
 
-        public static DepartmentRepository getInstance() { return instance; }
+        public DepartmentRepository(IDbContext dbContext)
+        {
+            DbContext = dbContext;
+        }
 
         public int Create(Department obj)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            if (obj.Name == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Name is missing");
+            if (obj.Description == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Description is missing");
+            if (obj.SuperDepartment == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "SuperDepartment is missing");
+            if (obj.CompanyId == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "CompanyId is missing");
+
+            using (IDbConnection con = DbContext.Connection)
             {
+                var param = new DynamicParameters();
+                param.Add("did", null);
+                param.Add("name", obj.Name);
+                param.Add("description", obj.Description);
+                param.Add("supervisor", obj.Supervisor);
+                param.Add("superDepartment", obj.SuperDepartment);
+                param.Add("companyId", obj.CompanyId);
+                param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
+
                 try
                 {
-                    con.Open();
-                    var param = new DynamicParameters();
-                    param.Add("did", null);
-                    param.Add("name", obj.Name);
-                    param.Add("description", obj.Description);
-                    param.Add("supervisor", obj.Supervisor);
-                    param.Add("superDepartment", obj.SuperDepartment);
-                    param.Add("companyId", obj.CompanyId);
-                    param.Add("returnValue", null, DbType.Int32, ParameterDirection.ReturnValue);
-
                     con.Execute("spInsertOrUpdateDepartment", param, commandType: CommandType.StoredProcedure);
 
+                    int returnValue = param.Get<Int32>("returnValue");
+                    if (returnValue <= 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_INSERTED);
                     return param.Get<Int32>("returnValue");
                 }
                 catch (SqlException ex)
                 {
-                    return -1;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException) { }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public bool Delete(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("Id", ids[0]);
 
                 try
                 {
-                    con.Open();
                     return con.Execute("UPDATE Department SET DeletedTime=getDate() WHERE Id = @id", param) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }
 
         public Department Retrieve(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            Department result = null;
+            using (IDbConnection con = DbContext.Connection)
             {
                 string cmdText =
                     @"SELECT Id,
@@ -102,26 +93,20 @@ namespace CompanyASP.NET.Repository
                 }
                 try
                 {
-                    con.Open();
-                    return con.QueryFirstOrDefault<Department>(cmdText, param);
-                }
-                finally
+                    result = con.QueryFirstOrDefault<Department>(cmdText, param);
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public IEnumerable<Department> RetrieveAll(params int[] ids)
         {
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            List<Department> result;
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 var commandText = 
@@ -141,28 +126,19 @@ namespace CompanyASP.NET.Repository
                 }
                 try
                 {
-                    con.Open();
-
-                    return con.Query<Department>(commandText, param);
-                }
-                finally
+                    result = con.Query<Department>(commandText, param).AsList();
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result.Count == 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public bool Update(Department obj)
         {
-
-            using (SqlConnection con = new SqlConnection(Startup.ConnectionString))
+            using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
                 param.Add("did", obj.Id);
@@ -173,24 +149,11 @@ namespace CompanyASP.NET.Repository
                 param.Add("companyId", obj.CompanyId);
                 try
                 {
-                    con.Open();
-
                     return con.Execute("spInsertOrUpdateDepartment", param, commandType: CommandType.StoredProcedure) > 0;
                 }
-                catch
+                catch (SqlException ex)
                 {
-                    return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
         }

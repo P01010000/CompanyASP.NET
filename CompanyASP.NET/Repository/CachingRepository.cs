@@ -25,6 +25,7 @@ namespace CompanyASP.NET.Repository
         {
             if(!IsCacheValid)
             {
+                Console.WriteLine("Refreshing Cache");
                 try
                 {
                     CachedObjects = Repository.RetrieveAll();
@@ -33,6 +34,9 @@ namespace CompanyASP.NET.Repository
                 {
                     CachedObjects = new List<T>();
                 }
+            } else
+            {
+                Console.WriteLine("Reading from Cache");
             }
         }
 

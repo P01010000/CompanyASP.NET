@@ -19,10 +19,9 @@ namespace CompanyASP.NET.Repository
 
         public int Create(Company obj)
         {
-            if (obj.Name == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Name is missing");
-            if (obj.Description == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Description is missing");
-            if (obj.FoundedAt == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "FoundedAt is missing");
-            if (obj.Branch == null) throw new RepositoryException<CreateResultType>(CreateResultType.INVALID_ARGUMENT, "Branch is missing");
+            // Check required fields
+            if (obj.Name == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "Name is missing");
+            if (obj.FoundedAt == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.INVALID_ARGUMENT, "FoundedAt is missing");
 
             using (IDbConnection con = DbContext.Connection)
             {
@@ -40,20 +39,12 @@ namespace CompanyASP.NET.Repository
 
                     int returnValue = param.Get<Int32>("returnValue");
 
-                    if (returnValue <= 0) throw new RepositoryException<CreateResultType>(CreateResultType.NOT_INSERTED);
+                    if (returnValue <= 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_INSERTED);
                     return returnValue;
                 }
                 catch (SqlException ex)
                 {
-                    throw new RepositoryException<CreateResultType>(CreateResultType.SQL_EXCEPTION, ex.Message);
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException) { }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message);
                 }
             }
         }
@@ -73,22 +64,12 @@ namespace CompanyASP.NET.Repository
                 {
                     return false;
                 }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
-                }
             }
         }
 
         public Company Retrieve(params int[] ids)
         {
+            Company result = null;
             using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
@@ -96,7 +77,7 @@ namespace CompanyASP.NET.Repository
 
                 try
                 {
-                    return con.QueryFirstOrDefault<Company>(
+                    result = con.QueryFirstOrDefault<Company>(
                         @"SELECT [Id]
                           ,[PersonId]
                           ,[Name]
@@ -106,28 +87,23 @@ namespace CompanyASP.NET.Repository
                         FROM dbo.viCompany
                         WHERE Id = @Id
                     ", param);
-                }
-                finally
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result == null) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public IEnumerable<Company> RetrieveAll(params int[] ids)
         {
+            List<Company> result;
             using (IDbConnection con = DbContext.Connection)
             {
                 try
                 {
-                    return con.Query<Company>(
+                    result = con.Query<Company>(
                         @"SELECT [Id]
                           ,[PersonId]
                           ,[Name]
@@ -135,20 +111,14 @@ namespace CompanyASP.NET.Repository
                           ,[FoundedAt]
                           ,[Branch]
                         FROM viCompany"
-                    );
-                }
-                finally
+                    ).AsList();
+                } catch (SqlException ex)
                 {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+                    throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.SQL_EXCEPTION, ex.Message, ex);
                 }
             }
+            if (result.Count == 0) throw new RepositoryException<RepositoryErrorType>(RepositoryErrorType.NOT_FOUND);
+            return result;
         }
 
         public bool Update(Company obj)
@@ -170,17 +140,6 @@ namespace CompanyASP.NET.Repository
                 catch
                 {
                     return false;
-                }
-                finally
-                {
-                    try
-                    {
-                        con.Close();
-                    }
-                    catch (SqlException ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
                 }
             }
         }

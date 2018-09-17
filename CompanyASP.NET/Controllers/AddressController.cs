@@ -19,7 +19,7 @@ namespace CompanyASP.NET.Controllers
             Repository = repository;
         }
 
-        // GET api/employee
+        // GET api/address
         [HttpGet]
         public IActionResult Get()
         {
@@ -35,7 +35,7 @@ namespace CompanyASP.NET.Controllers
             return result != null ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
         }
 
-        // POST api/employee
+        // POST api/address
         [HttpPost]
         public IActionResult Post([FromBody] Address value)
         {
@@ -43,7 +43,7 @@ namespace CompanyASP.NET.Controllers
             return id > 0 ? Ok(id) : (IActionResult)BadRequest("Could not be created");
         }
 
-        // PUT api/employee/5
+        // PUT api/address/5
         [HttpPut("{id}")]
         public IActionResult Put(int id, [FromBody] Address value)
         {
@@ -52,7 +52,7 @@ namespace CompanyASP.NET.Controllers
             return success ? Ok() : (IActionResult)BadRequest("Could not be updated");
         }
 
-        // PATCH api/employee
+        // PATCH api/address
         [HttpPatch]
         public IActionResult Patch([FromBody] IEnumerable<Address> addresses)
         {
@@ -60,7 +60,7 @@ namespace CompanyASP.NET.Controllers
             return result > 0 ? Ok(result) : (IActionResult)BadRequest("Could not be updated");
         }
 
-        // DELETE api/employee/5
+        // DELETE api/address/5
         [HttpDelete("{id}")]
         public IActionResult Delete(int id)
         {
