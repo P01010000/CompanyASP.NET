@@ -33,7 +33,6 @@ namespace CompanyASP.NET.Repository
             {
                 var param = new DynamicParameters();
                 param.Add("id", null);
-                param.Add("personId", null);
                 param.Add("lastName", obj.LastName);
                 param.Add("firstName", obj.FirstName);
                 param.Add("birthday", obj.Birthday);
@@ -202,11 +201,11 @@ namespace CompanyASP.NET.Repository
             using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
-                param.Add("eid", obj.Id);
+                param.Add("id", obj.Id);
                 param.Add("lastName", obj.LastName);
                 param.Add("firstName", obj.FirstName);
                 param.Add("birthday", obj.Birthday);
-                param.Add("phone", obj.Birthday);
+                param.Add("phone", obj.Phone);
                 param.Add("gender", gender);
                 param.Add("employeeSince", obj.EmployeeSince);
 

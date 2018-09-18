@@ -8,6 +8,7 @@ using CompanyASP.NET.Repository;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TobitWebApiExtensions.Extensions;
 
 namespace CompanyASP.NET.Controllers
 {
@@ -25,8 +26,26 @@ namespace CompanyASP.NET.Controllers
         [HttpGet]
         public IActionResult Get()
         {
-            var result = Repository.RetrieveAll();
-            return result.Count() != 0 ? Ok(result) : (IActionResult)StatusCode(StatusCodes.Status204NoContent);
+            try
+            {
+                var result = Repository.RetrieveAll();
+                return Ok(result);
+            } catch (RepositoryException<RepositoryErrorType> ex)
+            {
+                switch (ex.Type)
+                {
+                    case RepositoryErrorType.INVALID_ARGUMENT:
+                        return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
+                    case RepositoryErrorType.NOT_FOUND:
+                        return StatusCode(StatusCodes.Status204NoContent, ex.Message);
+                    case RepositoryErrorType.SQL_EXCEPTION:
+                        return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
+                    case RepositoryErrorType.NOT_INSERTED:
+                        return StatusCode(StatusCodes.Status409Conflict, ex.Message);
+                    default:
+                        return BadRequest(ex.Message);
+                }
+            }
         }
 
         // GET api/company/5

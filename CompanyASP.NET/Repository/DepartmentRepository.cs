@@ -27,7 +27,7 @@ namespace CompanyASP.NET.Repository
             using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
-                param.Add("did", null);
+                param.Add("id", null);
                 param.Add("name", obj.Name);
                 param.Add("description", obj.Description);
                 param.Add("supervisor", obj.Supervisor);
@@ -187,7 +187,7 @@ namespace CompanyASP.NET.Repository
             using (IDbConnection con = DbContext.Connection)
             {
                 var param = new DynamicParameters();
-                param.Add("did", obj.Id);
+                param.Add("id", obj.Id);
                 param.Add("name", obj.Name);
                 param.Add("description", obj.Description);
                 param.Add("supervisor", obj.Supervisor);
