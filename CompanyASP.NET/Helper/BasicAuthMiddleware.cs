@@ -51,23 +51,28 @@ namespace CompanyASP.NET.Helper
                 }
             } else if(auth !=null && auth.StartsWith("Bearer ", StringComparison.InvariantCultureIgnoreCase))
             {
-                string token = auth.Substring(7).Trim();
-                string[] content = token.Split('.');
-                if (content[1].Length % 4 == 2) content[1] += "==";
-                if (content[1].Length % 4 == 3) content[1] += "=";
+                string content = auth.Substring(7).Trim().Split('.')[1];
+                // Add Padding if base64 string is not well formed
+                if (content.Length % 4 == 2) content += "==";
+                if (content.Length % 4 == 3) content += "=";
 
-                string payload = Encoding.UTF8.GetString(Convert.FromBase64String(content[1].Trim()));
+                string payload = Encoding.UTF8.GetString(Convert.FromBase64String(content));
                 var tokenPayload = JsonConvert.DeserializeObject<ChaynsTokenPayload>(payload);
-                if (tokenPayload.LocationId == 157669 && DateTime.UtcNow < tokenPayload.exp)
+                // Only Allow Access if Token is valid for my locationId and has not expired yet
+                if (tokenPayload.LocationId == 157669 && tokenPayload.IsAdmin) {
+                    if (DateTime.UtcNow < tokenPayload.exp)
+                    {
+                        await _next.Invoke(context);
+                    } else
+                    {
+                        Reject(context, "Token expired");
+                    }
+                } else
                 {
-                    await _next.Invoke(context);
-                }
-                else
-                {
-                    Reject(context);
+                    Reject(context, "Token is not valid for LocationId 157669");
                 }
 
-                // check hash against a server
+                // check hash against server?
             } else
             {
                 Reject(context);
@@ -76,10 +81,10 @@ namespace CompanyASP.NET.Helper
             return;
         }
 
-        private async void Reject(HttpContext context)
+        private async void Reject(HttpContext context, string message = "Not Allowed")
         {
             context.Response.StatusCode = 401;
-            await context.Response.WriteAsync(JsonConvert.SerializeObject("Not allowed"));
+            await context.Response.WriteAsync(JsonConvert.SerializeObject(message));
         }
     }
 }
