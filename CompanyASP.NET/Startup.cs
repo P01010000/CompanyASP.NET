@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TobitWebApiExtensions.Extensions;
 
 namespace CompanyASP.NET
 {
@@ -22,6 +23,8 @@ namespace CompanyASP.NET
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+
+            services.AddChaynsToken();
 
             services.Configure<DbSettings>(Configuration.GetSection("ConnectionStrings"));
             services.AddSingleton<IDbContext, SqlContext>();
@@ -46,8 +49,8 @@ namespace CompanyASP.NET
             {
                 app.UseHsts();
             }
-
             app.UseHttpsRedirection();
+            app.UseAuthentication();
             app.UseMvc();
         }
     }

@@ -1,10 +1,15 @@
-﻿using CompanyASP.NET.Helper;
+﻿using Chayns.Backend.Api.Credentials;
+using Chayns.Backend.Api.Credentials.Base;
+using Chayns.Backend.Api.Repositories;
+using CompanyASP.NET.Helper;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Linq;
+using TobitWebApiExtensions.Extensions;
 
 namespace CompanyASP.NET.Controllers
 {
@@ -22,6 +27,10 @@ namespace CompanyASP.NET.Controllers
         [HttpGet]
         public IActionResult Get()
         {
+            // Reading uac groups and payload
+            // var pl = HttpContext.GetTokenPayload();
+            // var uac = HttpContext.GetUacGroups();
+
             try
             {
                 var result = Repository.RetrieveAll();
@@ -72,7 +81,7 @@ namespace CompanyASP.NET.Controllers
 
         // POST api/employee
         [HttpPost]
-        [MiddlewareFilter(typeof(BasicAuthFilter))]
+        [Authorize(Roles = "Api, 1")]
         public IActionResult Post([FromBody] Employee value)
         {
             try
@@ -98,8 +107,8 @@ namespace CompanyASP.NET.Controllers
         }
 
         // POST api/employee/collection
-        [MiddlewareFilter(typeof(BasicAuthFilter))]
         [HttpPost("collection")]
+        [Authorize(Roles = "Api, 1")]
         public IActionResult Post([FromBody] IEnumerable<Employee> list)
         {
             try
@@ -126,8 +135,8 @@ namespace CompanyASP.NET.Controllers
         }
 
         // PUT api/employee/5
-        [MiddlewareFilter(typeof(BasicAuthFilter))]
         [HttpPut("{id}")]
+        [Authorize(Roles = "Api, 1")]
         public IActionResult Put(int id, [FromBody] Employee value)
         {
             try
@@ -155,7 +164,7 @@ namespace CompanyASP.NET.Controllers
 
         // DELETE api/employee/5
         [HttpDelete("{id}")]
-        [MiddlewareFilter(typeof(BasicAuthFilter))]
+        [Authorize(Roles = "Api, 1")]
         public IActionResult Delete(int id)
         {
             try
