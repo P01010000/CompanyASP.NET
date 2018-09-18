@@ -5,22 +5,23 @@ namespace CompanyASP.NET.Models
 {
     public class Employee : IModel
     {
-        [Key]
+        //[Key]
         public int? Id { get; set; }
-        [Editable(false)]
+        //[Editable(false)]
         public int? PersonId { get; set; }
-        [Required]
+        //[Required]
         public string LastName { get; set; }
-        [Required]
+        //[Required]
         public string FirstName { get; set; }
-        [Required]
+        //[Required]
         public DateTime? Birthday { get; set; }
-        [Required]
+        //[Required]
         public string Phone { get; set; }
-        [Required]
+        //[Required]
         public string Gender { get; set; }
-        [Required]
+        //[Required]
         public DateTime? EmployeeSince { get; set; }
+
         public bool Identity(int[] ids)
         {
             return Id == ids[0];
