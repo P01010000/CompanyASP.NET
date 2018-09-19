@@ -1,14 +1,15 @@
-﻿using Chayns.Backend.Api.Credentials;
-using Chayns.Backend.Api.Credentials.Base;
-using Chayns.Backend.Api.Repositories;
+﻿using Auth.Models;
 using CompanyASP.NET.Helper;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
+using TobitLogger.Core;
+using TobitLogger.Core.Models;
 using TobitWebApiExtensions.Extensions;
 
 namespace CompanyASP.NET.Controllers
@@ -17,10 +18,12 @@ namespace CompanyASP.NET.Controllers
     [ApiController]
     public class EmployeeController : ControllerBase
     {
-        private IRepository<Employee> Repository;
-        public EmployeeController(IRepository<Employee> repository)
+        private IRepository<Employee> _repository;
+        private readonly ILogger<EmployeeController> _logger;
+        public EmployeeController(IRepository<Employee> repository, ILoggerFactory loggerFactory)
         {
-            Repository = repository;
+            _repository = repository;
+            _logger = loggerFactory.CreateLogger<EmployeeController>();
         }
 
         // GET api/employee
@@ -30,20 +33,25 @@ namespace CompanyASP.NET.Controllers
             // Reading uac groups and payload
             // var pl = HttpContext.GetTokenPayload();
             // var uac = HttpContext.GetUacGroups();
-
+            // var payload = HttpContext.GetTokenPayload<LocationUserTokenPayload>();
+            // if (payload == null || payload.LocationId != 157669) return StatusCode(StatusCodes.Status403Forbidden, "Token not valid for this location");
             try
             {
-                var result = Repository.RetrieveAll();
+                var result = _repository.RetrieveAll();
                 return Ok(result);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
                 switch (ex.Type)
                 {
                     case RepositoryErrorType.INVALID_ARGUMENT:
+                        var logObj = new ExceptionData(ex);
+                        logObj.AddCustomText(ex.Message);
+                        _logger.Error(logObj);
                         return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
                     case RepositoryErrorType.NOT_FOUND:
                         return StatusCode(StatusCodes.Status204NoContent, ex.Message);
                     case RepositoryErrorType.SQL_EXCEPTION:
+                        _logger.Error(new ExceptionData(ex));
                         return StatusCode(StatusCodes.Status400BadRequest, ex.Message);
                     case RepositoryErrorType.NOT_INSERTED:
                         return StatusCode(StatusCodes.Status409Conflict, ex.Message);
@@ -59,7 +67,7 @@ namespace CompanyASP.NET.Controllers
         {
             try
             {
-                var result = Repository.Retrieve(id);
+                var result = _repository.Retrieve(id);
                 return Ok(result);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
@@ -84,15 +92,25 @@ namespace CompanyASP.NET.Controllers
         [Authorize(Roles = "Api, 1")]
         public IActionResult Post([FromBody] Employee value)
         {
+            var payload = HttpContext.GetTokenPayload<LocationUserTokenPayload>();
+            if (payload == null || payload.LocationId != 157669)
+            {
+                _logger.Warning("Used token is not valid for this location. " + payload.LocationId);
+                return StatusCode(StatusCodes.Status403Forbidden, "Token not valid for this location");
+            }
             try
             {
-                int id = Repository.Create(value);
+                int id = _repository.Create(value);
                 return Ok(id);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
                 switch (ex.Type)
                 {
                     case RepositoryErrorType.INVALID_ARGUMENT:
+                        var logObj = new ExceptionData(ex);
+                        logObj.Add("newEmployee", value);
+                        logObj.AddCustomText(ex.Message);
+                        _logger.Error(logObj);
                         return StatusCode(StatusCodes.Status422UnprocessableEntity, ex.Message);
                     case RepositoryErrorType.NOT_FOUND:
                         return StatusCode(StatusCodes.Status204NoContent, ex.Message);
@@ -111,10 +129,12 @@ namespace CompanyASP.NET.Controllers
         [Authorize(Roles = "Api, 1")]
         public IActionResult Post([FromBody] IEnumerable<Employee> list)
         {
+            var payload = HttpContext.GetTokenPayload<LocationUserTokenPayload>();
+            if (payload == null || payload.LocationId != 157669) return StatusCode(StatusCodes.Status403Forbidden, "Token not valid for this location");
             try
             {
                 List<int> result;
-                result = Repository.Create(list).ToList();
+                result = _repository.Create(list).ToList();
                 return Ok(result);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
@@ -142,8 +162,8 @@ namespace CompanyASP.NET.Controllers
             try
             {
                 value.Id = id;
-                bool success = Repository.Update(value);
-                return Ok(Repository.Retrieve(id));
+                bool success = _repository.Update(value);
+                return Ok(_repository.Retrieve(id));
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
                 switch (ex.Type)
@@ -169,7 +189,7 @@ namespace CompanyASP.NET.Controllers
         {
             try
             {
-                bool success = Repository.Delete(id);
+                bool success = _repository.Delete(id);
                 return success ? Ok(1) : Ok(0);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {
