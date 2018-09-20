@@ -1,6 +1,7 @@
 using CompanyASP.NET.Helper;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +37,13 @@ namespace CompanyASP.NET
             services.AddSingleton<ILogContextProvider, RequestGuidContextProvider>();
 
             services.AddChaynsToken();
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("LocationId", policy =>
+                policy.Requirements.Add(new LocationIdFilter(157669)));
+            });
+            services.AddSingleton<IAuthorizationHandler, LocationIdHandler>();
 
             services.Configure<DbSettings>(Configuration.GetSection("ConnectionStrings"));
             services.AddSingleton<IDbContext, SqlContext>();

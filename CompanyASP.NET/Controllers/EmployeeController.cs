@@ -89,15 +89,9 @@ namespace CompanyASP.NET.Controllers
 
         // POST api/employee
         [HttpPost]
-        [Authorize(Roles = "Api, 1")]
+        [Authorize(Roles = "Api, 1", Policy = "LocationId")]
         public IActionResult Post([FromBody] Employee value)
         {
-            var payload = HttpContext.GetTokenPayload<LocationUserTokenPayload>();
-            if (payload == null || payload.LocationId != 157669)
-            {
-                _logger.Warning("Used token is not valid for this location. " + payload.LocationId);
-                return StatusCode(StatusCodes.Status403Forbidden, "Token not valid for this location");
-            }
             try
             {
                 int id = _repository.Create(value);
@@ -126,11 +120,9 @@ namespace CompanyASP.NET.Controllers
 
         // POST api/employee/collection
         [HttpPost("collection")]
-        [Authorize(Roles = "Api, 1")]
+        [Authorize(Roles = "Api, 1", Policy = "LocationId")]
         public IActionResult Post([FromBody] IEnumerable<Employee> list)
         {
-            var payload = HttpContext.GetTokenPayload<LocationUserTokenPayload>();
-            if (payload == null || payload.LocationId != 157669) return StatusCode(StatusCodes.Status403Forbidden, "Token not valid for this location");
             try
             {
                 List<int> result;
@@ -156,7 +148,7 @@ namespace CompanyASP.NET.Controllers
 
         // PUT api/employee/5
         [HttpPut("{id}")]
-        [Authorize(Roles = "Api, 1")]
+        [Authorize(Roles = "Api, 1", Policy = "LocationId")]
         public IActionResult Put(int id, [FromBody] Employee value)
         {
             try
@@ -184,7 +176,7 @@ namespace CompanyASP.NET.Controllers
 
         // DELETE api/employee/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Api, 1")]
+        [Authorize(Roles = "Api, 1", Policy = "LocationId")]
         public IActionResult Delete(int id)
         {
             try
