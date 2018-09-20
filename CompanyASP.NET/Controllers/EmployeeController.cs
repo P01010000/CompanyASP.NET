@@ -1,5 +1,6 @@
 ﻿using Auth.Models;
 using CompanyASP.NET.Helper;
+using CompanyASP.NET.Interfaces;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
 using Microsoft.AspNetCore.Authorization;
@@ -18,12 +19,14 @@ namespace CompanyASP.NET.Controllers
     [ApiController]
     public class EmployeeController : ControllerBase
     {
-        private IRepository<Employee> _repository;
+        private readonly IRepository<Employee> _repository;
         private readonly ILogger<EmployeeController> _logger;
-        public EmployeeController(IRepository<Employee> repository, ILoggerFactory loggerFactory)
+        private readonly IMessageHelper _messageHelper;
+        public EmployeeController(IRepository<Employee> repository, ILoggerFactory loggerFactory, IMessageHelper messageHelper)
         {
             _repository = repository;
             _logger = loggerFactory.CreateLogger<EmployeeController>();
+            _messageHelper = messageHelper;
         }
 
         // GET api/employee
@@ -38,6 +41,7 @@ namespace CompanyASP.NET.Controllers
             try
             {
                 var result = _repository.RetrieveAll();
+                _messageHelper.SendIntercom(result.FirstOrDefault().FirstName);
                 return Ok(result);
             } catch (RepositoryException<RepositoryErrorType> ex)
             {

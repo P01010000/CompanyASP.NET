@@ -1,4 +1,5 @@
 using CompanyASP.NET.Helper;
+using CompanyASP.NET.Interfaces;
 using CompanyASP.NET.Models;
 using CompanyASP.NET.Repository;
 using Microsoft.AspNetCore.Authorization;
@@ -44,6 +45,11 @@ namespace CompanyASP.NET
                 policy.Requirements.Add(new LocationIdFilter(157669)));
             });
             services.AddSingleton<IAuthorizationHandler, LocationIdHandler>();
+
+            services.Configure<ChaynsApiSettings>(Configuration.GetSection("ChaynsApiSettings"));
+            services.AddScoped<IMessageHelper, MessageHelper>();
+
+            services.AddScoped<IUacHelper, UacHelper>();
 
             services.Configure<DbSettings>(Configuration.GetSection("ConnectionStrings"));
             services.AddSingleton<IDbContext, SqlContext>();
